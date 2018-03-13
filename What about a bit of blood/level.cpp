@@ -17,7 +17,7 @@
 
 level *lvl;
 
-level::level(string map_name): map(map_name), time(), fbo_texture(false), camera(1.f), p((float)map.GetWidth() / map.GetHeight())
+level::level(string map_name): map(map_name), time(), fbo_texture(false), camera(1.f), p((float)map.GetWidth()/map.GetHeight())
 {     
     fbo_texture.BindNullImg(WidthScreen, HeightScreen);
 
@@ -74,28 +74,25 @@ level::~level()
     delete(&p);
 }
 
-void level::DrawFBO(void)
+void level::DrawFBO(void) const
 {
     static timer timerFPS;
     static double prev_t = timerFPS.GetTime();
+    const float screen_ratio = (float)WidthScreen / HeightScreen;
+    const float plane_ratio = (float)map.GetWidth() / map.GetHeight();
 
     glUseProgram(0);
     glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, fbo);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+    glOrtho(-plane_ratio, plane_ratio,-1,1,-1,1);
     //glViewport(0, 0, WidthScreen, HeightScreen);
-    /*float ratio = (float)WidthScreen / HeightScreen;
-    if (ratio <= 1)
-        glOrtho(-1.0, 1.0, -1.0 / ratio, 1.0 / ratio, -1.0, 1.0);
-    else
-        glOrtho(-1.0*ratio, 1.0*ratio, -1.0, 1.0, -1.0, 1.0);*/
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_TEXTURE_2D);
 
     map.Draw();
 
-    A->Draw(); 
+    A->Draw();
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
@@ -119,7 +116,7 @@ void level::DrawFBO(void)
 
 void level::ResponseCamera(void)
 {
-    static const float screen_ratio = (float)WidthScreen / HeightScreen, plane_ratio = (float)map.GetWidth() / map.GetHeight();
+    const float screen_ratio = (float)WidthScreen / HeightScreen;
     static glm::vec2 down = A->g;
     glm::vec2 t = A->g - down;
     down += t * 0.01f;
@@ -128,7 +125,7 @@ void level::ResponseCamera(void)
     camera = glm::perspective(glm::radians(45.f), screen_ratio, 0.1f, 100.0f);
     
     camera = glm::rotate(camera, -atan2(down.x, -down.y), glm::vec3(0.0f, 0.0f, 1.0f));
-    camera = glm::translate(camera, glm::vec3(-A->GetTexCoord().x * plane_ratio, -A->GetTexCoord().y, -3.f));
+    camera = glm::translate(camera, glm::vec3(-A->GetTexCoord().x, -A->GetTexCoord().y, -2.f));
 }
 
 void level::Draw(void)

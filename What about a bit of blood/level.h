@@ -18,7 +18,7 @@ private:
     glm::mat4 camera;
     plane p;
 
-    void DrawFBO(void);
+    void DrawFBO(void) const;
     void ResponseCamera(void);
 public:
     level(string map_name);

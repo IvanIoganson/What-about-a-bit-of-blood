@@ -82,7 +82,7 @@ player::player(level *nlvl): skin(), lvl(nlvl), pos(400,300), g(0, MAX_PLAYER_GR
 
 glm::vec2 player::GetTexCoord(void) const
 {
-    return glm::vec2(pos.x / lvl->map.GetWidth() * 2 - 1, pos.y / lvl->map.GetHeight() * 2 - 1);
+    return glm::vec2(pos.x / lvl->map.GetWidth() * 2 - 1, (pos.y / lvl->map.GetHeight() * 2 - 1) / lvl->map.GetWidth() * lvl->map.GetHeight());
 }
 
 void player::Response(void)
@@ -113,7 +113,6 @@ void player::Draw(void) const
     glPushMatrix();
 
     glColor3d(1, 1, 1);
-
     glTranslated(GetTexCoord().x, GetTexCoord().y, 0);
     glRotated(atan2(g.x, -g.y) * 180 / glm::pi<double>(), 0, 0, 1);
     

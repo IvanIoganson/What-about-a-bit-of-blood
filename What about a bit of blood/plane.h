@@ -14,7 +14,7 @@ private:
     float ratio;
 public:
     plane(float ratio);
-    void plane::Draw(texture &tex, glm::mat4 &camera);
+    void plane::Draw(const texture &tex, const glm::mat4 &camera) const;
     unsigned int GetShaderID(void) const { return shaderProgram.program; }
     ~plane();
 };

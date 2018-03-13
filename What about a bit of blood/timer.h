@@ -3,9 +3,11 @@
 class timer 
 {
 private:
-    float start, time, speed, prevtime;
+    const float start;
+    float speed;
+    mutable float time, prevtime;
 public:
     timer(void);
-    float GetTime( void );
+    float GetTime( void ) const;
     void SetSpeed(float new_speed);
 };

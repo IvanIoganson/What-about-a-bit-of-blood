@@ -45,7 +45,7 @@ plane::plane(float ratio): shaderProgram("vertex_shader.glsl", "fragment_shader.
     glBindVertexArray(0);
 }
 
-void plane::Draw(texture &tex, glm::mat4 &camera)
+void plane::Draw(const texture &tex, const glm::mat4 &camera) const
 {
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, tex);

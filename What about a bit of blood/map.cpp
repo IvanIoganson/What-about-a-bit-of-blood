@@ -102,15 +102,21 @@ int map::GetHeight(void) const
 
 void map::Draw(void) const
 {
+    glPushMatrix();
+
+    float ratio = (float)GetWidth() / GetHeight();
     glColor3d(1, 1, 1);
+
+    glOrtho(-1, 1, -ratio, ratio, -1, 1);
 
     glBindTexture(GL_TEXTURE_2D, tex);
     glBegin(GL_QUADS);
-    glTexCoord2d(0, 0); glVertex2d(-1, -1);
-    glTexCoord2d(0, 1); glVertex2d(-1, 1);
-    glTexCoord2d(1, 1); glVertex2d(1, 1);
-    glTexCoord2d(1, 0); glVertex2d(1, -1);
+        glTexCoord2d(0, 0); glVertex2d(-1, -1);
+        glTexCoord2d(0, 1); glVertex2d(-1, 1);
+        glTexCoord2d(1, 1); glVertex2d(1, 1);
+        glTexCoord2d(1, 0); glVertex2d(1, -1);
     glEnd();
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    glPopMatrix();
 }

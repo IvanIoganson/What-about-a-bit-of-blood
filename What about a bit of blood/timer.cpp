@@ -6,7 +6,7 @@ timer::timer(void) : start(clock()), time(0), speed(1), prevtime(start)
 {
 }
 
-float timer::GetTime(void)
+float timer::GetTime(void) const
 {
     int ttt = clock();
     time += (ttt - prevtime) * speed;
