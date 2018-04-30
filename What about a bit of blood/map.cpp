@@ -1,14 +1,34 @@
+#include <GL/glew.h> 
+
 #if defined(linux) || defined(_WIN32)
 #include <GL/glut.h>   
 #else
 #include <GLUT/GLUT.h>  
 #endif
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include "level.h"
 #include "map.h"
 
 map::map(string name) : im(name), tex()
 {
-    tex.BindImg(im);    
+    tex.BindImg(im);  
+    float ratio = (float)GetHeight() / GetWidth();
+    float vert[] = {
+        -1, ratio , 0, 0, 1,
+        -1, -ratio, 0, 0, 0,
+        1 , -ratio, 0, 1, 0,
+        1 , ratio , 0, 1, 1
+    };
+    GLuint ind[] = {
+        0, 1, 3,
+        1, 2, 3
+    };
+
+    mesh = new mesh_2d(GL_STATIC_DRAW, tex, vert, sizeof(vert), ind, sizeof(ind));
 }
 
 map::~map()
@@ -68,26 +88,20 @@ glm::vec2 map::GetFreePlace(const glm::vec2& point, const glm::vec2& dir) const
 glm::vec2 map::GetNormal(const glm::vec2 &point) const
 {
     const int D = 5;
+    glm::vec2 p((int)point.x, (int)point.y);
 
     glm::vec2 n(0, 0);
-    glm::vec2 res(0, 0);
-    for (int x = point.x - D; x <= point.x + D; x++)
-        for (int y = point.y - D; y <= point.y + D; y++)
+    for (int x = p.x - D; x <= p.x + D; x++)
+        for (int y = p.y - D; y <= p.y + D; y++)
             if (x >= 0 && x < im.GetWidth() && y >= 0 && y < im.GetHeight() && im.GetPixel(x, y).a == 0)
             {
                 glm::vec2 t(x, y);
-                n += glm::normalize(t - point);
+                    if (t != p)
+                n += glm::normalize(t - p);
             }
-    res.x = n.x, res.y = n.y;
-/*#ifdef _DEBUG
-    glBegin(GL_LINES);
-        glColor3d(0, 1, 0);
-        glVertex2i(point.x / im.GetWidth() * 2 - 1, point.y / im.GetHeight() * 2 - 1);
-        glVertex2i((point.x + n.x) / im.GetWidth() * 2 - 1, (point.y + n.y) / im.GetHeight() * 2 - 1);
-    glEnd();
-#endif*/
-    res = glm::normalize(res);
-    return res;
+    if (n == glm::vec2(0, 0))
+        return n;
+    return glm::normalize(n);
 }
 
 int map::GetWidth(void) const
@@ -102,21 +116,5 @@ int map::GetHeight(void) const
 
 void map::Draw(void) const
 {
-    glPushMatrix();
-
-    float ratio = (float)GetWidth() / GetHeight();
-    glColor3d(1, 1, 1);
-
-    glOrtho(-1, 1, -ratio, ratio, -1, 1);
-
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glBegin(GL_QUADS);
-        glTexCoord2d(0, 0); glVertex2d(-1, -1);
-        glTexCoord2d(0, 1); glVertex2d(-1, 1);
-        glTexCoord2d(1, 1); glVertex2d(1, 1);
-        glTexCoord2d(1, 0); glVertex2d(1, -1);
-    glEnd();
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glPopMatrix();
+    mesh->Draw(IDENTITY_MATRIX, IDENTITY_MATRIX, lvl->fbo_projection);
 }

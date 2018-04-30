@@ -7,12 +7,14 @@
 
 #include "plane.h"
 
-plane::plane(float ratio): shaderProgram("vertex_shader.glsl", "fragment_shader.glsl"), time()
+plane::plane(float ratio): shaderProgram("Plane/vertex_shader.glsl", "Plane/fragment_shader.glsl"), time()
 {
     this->ratio = ratio;
 
     vertexTimeLocation = glGetUniformLocation(shaderProgram.program, "time");
-    transformLoc = glGetUniformLocation(shaderProgram.program, "transform");
+    projectionLoc = glGetUniformLocation(shaderProgram.program, "projection");
+    viewLoc = glGetUniformLocation(shaderProgram.program, "view");
+    modelLoc = glGetUniformLocation(shaderProgram.program, "model");
 
     GLfloat vertices[] = {
         1.f * ratio,  1.f, 0.0f, 1.0f, 1.0f,
@@ -45,7 +47,7 @@ plane::plane(float ratio): shaderProgram("vertex_shader.glsl", "fragment_shader.
     glBindVertexArray(0);
 }
 
-void plane::Draw(const texture &tex, const glm::mat4 &camera) const
+void plane::Draw(const texture &tex, const glm::mat4 &projection, const glm::mat4 &view, const glm::mat4 &model) const
 {
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -53,7 +55,9 @@ void plane::Draw(const texture &tex, const glm::mat4 &camera) const
     glMatrixMode(GL_PROJECTION);
     shaderProgram.Use();
     glUniform1f(vertexTimeLocation, time.GetTime());
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(camera));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
     glBindVertexArray(VAO);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

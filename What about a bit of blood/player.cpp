@@ -1,10 +1,16 @@
 #include <iostream>
 
+#include <GL/glew.h> 
+
 #if defined(linux) || defined(_WIN32)
 #include <GL/glut.h>   
 #else
 #include <GLUT/GLUT.h>  
 #endif
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "player.h"
 
@@ -13,37 +19,58 @@ player *A;
 void player::MoveOnGround(float prev_t)
 {
     glm::vec2 n = lvl->map.GetNormal(pos);
-    g = -n * MAX_PLAYER_GRAVITY;
-    if (go_x != 0)
+    g = -n;
+    
+    if (moving == LEFT)
+        go_x -= (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_ON_GROUND,
+        go_x = go_x < -1 ? -1 : go_x;
+    else if (moving == RIGHT)
+        go_x += (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_ON_GROUND,
+        go_x = go_x > 1 ? 1 : go_x;
+    else
+        go_x = 0;
+
+    if (moving != STOP)
     {
+        glm::vec2 start = pos;
+        int x = pos.x, y = pos.y;
         glm::vec2 d;
-        float len = MAX_PLAYER_MOVE_SPEED * (time.GetTime() - prev_t);
-        for (int i = 0; i < len + 1; i++)
+        float len = MAX_PLAYER_MOVE_SPEED_ON_GROUND * (time.GetTime() - prev_t);
+        if (len < 1)
+            len = 1;
+        for (int i = 0; i < len; i++)
         {
             d = glm::vec2(n.y * go_x, -n.x * go_x);
             pos += d;
-            n = lvl->map.GetNormal(pos);
-            g = -n * MAX_PLAYER_GRAVITY;
-            if (lvl->map.im.GetPixel(pos.x, pos.y).a == 0)
+            if ((int)pos.x != x || (int)pos.y != y)
             {
-                pos = lvl->map.GetCollision(pos, g);
-            }
-            else if (lvl->map.im.GetNumOfNotCromaPoints(pos) > 8)
-            {
-                pos = lvl->map.GetFreePlace(pos, n);
+                if (lvl->map.im.GetPixel(pos.x, pos.y).a == 0)
+                {
+                    pos = lvl->map.GetCollision(pos, g);
+                }
+                else if (lvl->map.im.GetNumOfNotCromaPoints(pos) > 8)
+                {
+                    pos = lvl->map.GetFreePlace(pos, n);
+                }
+                x = pos.x, y = pos.y;
+                n = lvl->map.GetNormal(pos);
+                g = -n;
             }
         }
-        //pos += v * (time.GetTime() - prev_t);
-
-        v *= 0;
+        v = (pos - start) / (time.GetTime() - prev_t);
     }
-    if (jump_state == FALL)
+    else
+        v = glm::vec2(0,0);
+    if (jump_state == FALL || jump_state == MOVE_UP)
+    {
         jump_state = ON_GROUND;
+        is_on_ground = true;
+    }
     if (jump_state == JUMP)
     {
         n = lvl->map.GetNormal(pos);
-        v = n * PLAYER_JUMP;
-        g = -n * MAX_PLAYER_GRAVITY;
+        v += n * PLAYER_JUMP_SPEED;
+        g = -n;
         is_on_ground = false;
         while (lvl->map.im.GetPixel(pos.x, pos.y).a > 0)
             pos += n;
@@ -52,32 +79,59 @@ void player::MoveOnGround(float prev_t)
 
 void player::MoveInAir(float prev_t)
 {
-    glm::vec2 nv, npos, normg = glm::normalize(g);
-    v += glm::vec2(-MAX_PLAYER_MOVE_SPEED_IN_AIR * normg.y * go_x, MAX_PLAYER_MOVE_SPEED_IN_AIR * normg.x * go_x) + g * (time.GetTime() - prev_t);
-    npos = pos + v * (time.GetTime() - prev_t);
+    static glm::vec2 v_y(0,0);
+    glm::vec2 nv, npos;
+    static float jump_start = -1;
+
+    if (moving == LEFT)
+        go_x -= (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_IN_AIR,
+        go_x = go_x < -1 ? -1 : go_x;
+    else if (moving == RIGHT)
+        go_x += (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_IN_AIR,
+        go_x = go_x > 1 ? 1 : go_x;
 
     if (jump_state == JUMP)
-        jump_state = FALL;
+        jump_state = MOVE_UP;
+    if (jump_state == MOVE_UP) {
+        if (jump_start < 0)
+            jump_start = time.GetTime();
+        v_y = glm::vec2((g.x * v.x + g.y * v.y) * g.x, (g.x * v.x + g.y * v.y) * g.y);
+        if (jump_start + MAX_MOVE_UP_TIME < time.GetTime())
+            jump_state = FALL;
+    }
+    if (jump_state == FALL)
+        jump_start = -1,
+        v_y += g * (time.GetTime() - prev_t) * MAX_PLAYER_GRAVITY;
+
+    v = glm::vec2(-MAX_PLAYER_MOVE_SPEED_IN_AIR * g.y * go_x, MAX_PLAYER_MOVE_SPEED_IN_AIR * g.x * go_x) + v_y;
+    npos = pos + v * (time.GetTime() - prev_t);
 
     glm::vec2 d = glm::normalize(npos - pos);
     while (pos.y >= 0 && pos.y < lvl->map.GetHeight() && pos.x >= 0 && pos.x < lvl->map.GetWidth() && glm::dot(d, (npos - pos)) > 0)
     {
-/*#ifdef _DEBUG
-        glBegin(GL_POINTS);
-        glColor3d(1, 0, 1);
-        glVertex2i(pos.x / lvl->map.GetWidth() * 2 - 1, pos.y / lvl->map.GetHeight() * 2 - 1);
-        glEnd();
-#endif*/
         if (lvl->map.im.GetPixel(pos.x, pos.y).a > 0)
             break;
         pos += d;
     }
 }
 
-player::player(level *nlvl): skin(), lvl(nlvl), pos(400,300), g(0, MAX_PLAYER_GRAVITY), is_on_ground(false), go_x(0), jump_state(FALL)
+player::player(level *nlvl): skin(), lvl(nlvl), pos(400,300), g(0, 1), is_on_ground(false),
+                             go_x(0), moving(STOP), jump_state(FALL)
 {
     image im("player.png");
     skin.BindImg(im);
+    float vert[] = {
+        0 - (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0                                                 , 0, 0, 1,
+        0 - (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0 + (float)skin.GetHeight() / lvl->map.GetHeight(), 0, 0, 0,
+        0 + (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0 + (float)skin.GetHeight() / lvl->map.GetHeight(), 0, 1, 0,
+        0 + (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0                                                 , 0, 1, 1
+    };
+    GLuint ind[] = {
+        0, 1, 3,
+        1, 2, 3
+    };
+
+    mesh = new mesh_2d(GL_STATIC_DRAW, skin, vert, sizeof(vert), ind, sizeof(ind));
 }
 
 glm::vec2 player::GetTexCoord(void) const
@@ -91,15 +145,9 @@ void player::Response(void)
 
     if (lvl == NULL)
         return;
+    glm::vec2 prev_pos = pos;
 
     is_on_ground = (lvl->map.im.GetPixel(pos.x, pos.y).a > 0);
-#ifdef _DEBUG
-    /*printf("%d %d (%lf %lf): %d %d %d %d\n", (int)pos.x, (int)pos.y, 
-        GetTexCoord().x, GetTexCoord().y,
-        lvl->map.im.GetPixel(pos.x, pos.y).r,
-        lvl->map.im.GetPixel(pos.x, pos.y).g, lvl->map.im.GetPixel(pos.x, pos.y).b,
-        lvl->map.im.GetPixel(pos.x, pos.y).a);*/
-#endif
     if (is_on_ground)
         MoveOnGround(prev_t);
     else
@@ -110,19 +158,7 @@ void player::Response(void)
 
 void player::Draw(void) const
 {
-    glPushMatrix();
+    glm::mat4 model = glm::rotate(glm::translate(IDENTITY_MATRIX, glm::vec3(GetTexCoord().x, GetTexCoord().y, 0)), atan2(g.x, -g.y), glm::vec3(0, 0, 1));
 
-    glColor3d(1, 1, 1);
-    glTranslated(GetTexCoord().x, GetTexCoord().y, 0);
-    glRotated(atan2(g.x, -g.y) * 180 / glm::pi<double>(), 0, 0, 1);
-    
-    glBindTexture(GL_TEXTURE_2D, skin);
-    glBegin(GL_QUADS);
-        glTexCoord2d(0, 1); glVertex2d(0 - (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0);
-        glTexCoord2d(0, 0); glVertex2d(0 - (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0 + (float)skin.GetHeight() / lvl->map.GetHeight());
-        glTexCoord2d(1, 0); glVertex2d(0 + (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0 + (float)skin.GetHeight() / lvl->map.GetHeight());
-        glTexCoord2d(1, 1); glVertex2d(0 + (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0);
-    glEnd();
-
-    glPopMatrix();
+    mesh->Draw(model, IDENTITY_MATRIX, lvl->fbo_projection);
 }

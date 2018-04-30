@@ -4,6 +4,7 @@
 #include "player.h"
 #include "plane.h"
 #include "text.h"
+#include "mesh_2d.h"
 
 int WidthScreen = 1920, HeightScreen = 1080;
 double ratio;
@@ -51,14 +52,13 @@ void Init(void)
     glViewport(0, 0, WidthScreen, HeightScreen);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(-ratio, ratio, -1.f, 1.f, -1.f, 1.f);
     //gluLookAt(0, 0, 5, 0, 0, 0, 0, 1, 0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glViewport(0, 0, WidthScreen, HeightScreen); 
 
     //glEnable(GL_DEPTH_TEST);
-    glEnable(GL_MULTISAMPLE); 
+    //glEnable(GL_MULTISAMPLE); 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_ALPHA_TEST);
@@ -68,6 +68,7 @@ void Init(void)
 
     //glfwSwapInterval(1);
 
+    mesh_2d::DefaultShader = new shader("Mesh_Default/vertex_shader.glsl", "Mesh_Default/fragment_shader.glsl");
     lvl = new level("map1.png");
     A = new player(lvl);
 }
@@ -78,11 +79,6 @@ void Display(void)
     glClearColor(0.05, 0.05, 0.1, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glMatrixMode(GL_PROJECTION);
-    float ratio = (float)WidthScreen / HeightScreen;
-    if (WidthScreen <= HeightScreen)
-        glOrtho(-1.0, 1.0, -1.0 / ratio, 1.0 / ratio, -1.0, 1.0);
-    else
-        glOrtho(-1.0*ratio, 1.0*ratio, -1.0, 1.0, -1.0, 1.0);
 
     static timer timerFPS;
     static double prev_t = timerFPS.GetTime();
@@ -91,34 +87,18 @@ void Display(void)
 
     lvl->Draw();
     A->Response();
-    /*im->Draw();
-    p->Draw();
-    /*glTranslated(WidthScreen / 2, HeightScreen / 2, 0);
-    glRotated(-atan2(down.x, -down.y) * 180 / 3.14159265358979, 0, 0, 1);
-    glTranslated(-A->pos.x, -A->pos.y, 0);
-
-
-    A->Response();
-
-    A->Draw(); 
-    lvl.Draw();*/
 
     glUseProgram(0);
 
     cout << 1 / (timerFPS.GetTime() - prev_t) << endl;
     prev_t = timerFPS.GetTime();
     //Sleep(16);
-    glLoadIdentity();
+    /*glLoadIdentity();
     glColor3f(1, 1, 1);
     glRasterPos2d(-1, 0.95);
     PrintText("%lf", 1 / (timerFPS.GetTime() - prev_t));
     prev_t = timerFPS.GetTime();
-    glColor3f(0, 0, 0); 
-
-    /*glFlush();
-
-    glutSwapBuffers();
-    glutPostRedisplay();*/
+    glColor3f(0, 0, 0);*/ 
 }
 
 void Keyboard(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -130,10 +110,10 @@ void Keyboard(GLFWwindow* window, int key, int scancode, int action, int mode)
             glfwSetWindowShouldClose(window, GL_TRUE);
             break;
         case GLFW_KEY_A:
-            A->go_x = -1;
+            A->moving = player::LEFT;
             break;
         case GLFW_KEY_D:
-            A->go_x = 1;
+            A->moving = player::RIGHT;
             break;
         case GLFW_KEY_W:
             if(A->jump_state == player::ON_GROUND)
@@ -148,15 +128,19 @@ void Keyboard(GLFWwindow* window, int key, int scancode, int action, int mode)
         {
         case GLFW_KEY_A:
             if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE)
-                A->go_x = 0;
+                A->moving = player::STOP;
             else
-                A->go_x = 1;
+                A->moving = player::RIGHT;
             break;
         case GLFW_KEY_D:
             if (glfwGetKey(window, GLFW_KEY_A) == GLFW_RELEASE)
-                A->go_x = 0;
+                A->moving = player::STOP;
             else
-                A->go_x = -1;
+                A->moving = player::LEFT;
+            break;
+        case GLFW_KEY_W:
+            if (A->jump_state == player::JUMP || A->jump_state == player::MOVE_UP)
+                A->jump_state = player::FALL;
             break;
         default:
             break;

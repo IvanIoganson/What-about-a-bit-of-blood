@@ -6,12 +6,14 @@
 
 #include "image.h"
 #include "plane.h"
+#include "mesh_2d.h"
 
 class map
 {
 public:
     image im;
     texture tex;
+    mesh_2d *mesh;
 
     map(string name);
     ~map();

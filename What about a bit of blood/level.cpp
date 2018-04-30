@@ -17,7 +17,7 @@
 
 level *lvl;
 
-level::level(string map_name): map(map_name), time(), fbo_texture(false), camera(1.f), p((float)map.GetWidth()/map.GetHeight())
+level::level(string map_name): map(map_name), time(), fbo_texture(false), view(1.f), p((float)map.GetWidth()/map.GetHeight())
 {     
     fbo_texture.BindNullImg(WidthScreen, HeightScreen);
 
@@ -63,6 +63,10 @@ level::level(string map_name): map(map_name), time(), fbo_texture(false), camera
     /*glGenRenderbuffers(1, &rboColorId);
     glBindRenderbuffer(GL_RENDERBUFFER, rboColorId);
     glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_RGB8, width, height);*/
+    const float screen_ratio = (float)WidthScreen / HeightScreen;
+    projection = glm::perspective(glm::radians(45.f), screen_ratio, 0.1f, 100.0f);
+    const double plane_ratio = (float)map.GetWidth() / map.GetHeight();
+    fbo_projection = glm::ortho(-plane_ratio, plane_ratio, -1., 1., -1., 1.);
 }
 
 level::~level()
@@ -86,7 +90,6 @@ void level::DrawFBO(void) const
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glOrtho(-plane_ratio, plane_ratio,-1,1,-1,1);
-    //glViewport(0, 0, WidthScreen, HeightScreen);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_TEXTURE_2D);
 
@@ -102,35 +105,25 @@ void level::DrawFBO(void) const
     //glRasterPos2d(-1, 0.95);
     PrintText("%lf", 1 / (timerFPS.GetTime() - prev_t));
     prev_t = timerFPS.GetTime();
-    glColor3f(0, 0, 0);
-    /*glColor4d(1, 0, 0, 1);
-    glBegin(GL_POINTS);
-        glVertex2d(A->GetTexCoord().x, A->GetTexCoord().y);
-    glEnd();*/
+    glColor3f(0, 0, 0);*/
 
-    /*glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-        GL_TEXTURE_2D, texture, 0);*/
     glFlush();
     glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, 0);
 }
 
 void level::ResponseCamera(void)
 {
-    const float screen_ratio = (float)WidthScreen / HeightScreen;
     static glm::vec2 down = A->g;
     glm::vec2 t = A->g - down;
     down += t * 0.01f;
 
-    //camera = glm::ortho(-screen_ratio, screen_ratio, -1.f, 1.f, -1.f, 1.f);
-    camera = glm::perspective(glm::radians(45.f), screen_ratio, 0.1f, 100.0f);
-    
-    camera = glm::rotate(camera, -atan2(down.x, -down.y), glm::vec3(0.0f, 0.0f, 1.0f));
-    camera = glm::translate(camera, glm::vec3(-A->GetTexCoord().x, -A->GetTexCoord().y, -2.f));
+    view = glm::rotate(IDENTITY_MATRIX, -atan2(down.x, -down.y), glm::vec3(0.0f, 0.0f, 1.0f));
+    view = glm::translate(view, glm::vec3(-A->GetTexCoord().x, -A->GetTexCoord().y, -2.f));
 }
 
 void level::Draw(void)
 {   
     DrawFBO();
     ResponseCamera();
-    p.Draw(fbo_texture, camera);
+    p.Draw(fbo_texture, projection, view, IDENTITY_MATRIX);
 }
