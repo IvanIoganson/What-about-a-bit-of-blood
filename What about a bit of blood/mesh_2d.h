@@ -1,5 +1,11 @@
 #pragma once
 
+#if defined(linux) || defined(_WIN32)
+#include <GL/glut.h>   
+#else
+#include <GLUT/GLUT.h>  
+#endif
+
 #include "shader.h"
 
 class mesh_2d

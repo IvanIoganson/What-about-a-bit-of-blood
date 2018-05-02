@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm\matrix.hpp>
+#include <list>
 
 #include "timer.h"
 #include "map.h"
@@ -11,13 +12,13 @@ using namespace std;
 class level
 {
 private:
-    map map;
+    list<map *> maps;
     timer time;
     unsigned int fbo;
     texture fbo_texture;
     glm::mat4 view;
     glm::mat4 projection;
-    plane p;
+    plane *p;
 
     void DrawFBO(void) const;
     void ResponseCamera(void);
@@ -35,3 +36,4 @@ public:
 extern level *lvl;
 extern int WidthScreen, HeightScreen;
 extern double ratio;
+extern int MapWidth, MapHeight;

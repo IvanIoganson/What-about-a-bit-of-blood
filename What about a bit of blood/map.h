@@ -14,13 +14,16 @@ public:
     image im;
     texture tex;
     mesh_2d *mesh;
+    glm::vec2 pos;
 
     map(string name);
+    map(string name, glm::vec2 &init_pos);
     ~map();
     glm::vec2 GetCollision(const glm::vec2 &point, const glm::vec2 &dir) const;
     glm::vec2 GetFreePlace(const glm::vec2 &point, const glm::vec2 &dir) const;
     glm::vec2 GetNormal(const glm::vec2 &point) const;
     int GetWidth(void) const;
     int GetHeight(void) const;
-    void Draw(void) const;
+    virtual void Draw(void) const;
+    bool IsOnMap(glm::vec2 pos) const;
 };

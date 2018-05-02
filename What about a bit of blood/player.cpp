@@ -18,7 +18,7 @@ player *A;
 
 void player::MoveOnGround(float prev_t)
 {
-    glm::vec2 n = lvl->map.GetNormal(pos);
+    glm::vec2 n = cur_surf->GetNormal(pos);
     g = -n;
     
     if (moving == LEFT)
@@ -44,16 +44,20 @@ void player::MoveOnGround(float prev_t)
             pos += d;
             if ((int)pos.x != x || (int)pos.y != y)
             {
-                if (lvl->map.im.GetPixel(pos.x, pos.y).a == 0)
+                /*for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
+                    if ((*i)->IsOnMap(pos))
+                        if ((*i)->im.GetPixel(pos.x - (*i)->pos.x, pos.y - (*i)->pos.y).a > 0)
+                            cur_surf = *i;*/
+                if (cur_surf->im.GetPixel(pos.x, pos.y).a == 0)
                 {
-                    pos = lvl->map.GetCollision(pos, g);
+                    pos = cur_surf->GetCollision(pos, g);
                 }
-                else if (lvl->map.im.GetNumOfNotCromaPoints(pos) > 8)
+                else if (cur_surf->im.GetNumOfNotCromaPoints(pos) > 8)
                 {
-                    pos = lvl->map.GetFreePlace(pos, n);
+                    pos = cur_surf->GetFreePlace(pos, n);
                 }
                 x = pos.x, y = pos.y;
-                n = lvl->map.GetNormal(pos);
+                n = cur_surf->GetNormal(pos);
                 g = -n;
             }
         }
@@ -68,11 +72,11 @@ void player::MoveOnGround(float prev_t)
     }
     if (jump_state == JUMP)
     {
-        n = lvl->map.GetNormal(pos);
+        n = cur_surf->GetNormal(pos);
         v += n * PLAYER_JUMP_SPEED;
         g = -n;
         is_on_ground = false;
-        while (lvl->map.im.GetPixel(pos.x, pos.y).a > 0)
+        while (cur_surf->im.GetPixel(pos.x, pos.y).a > 0)
             pos += n;
     }
 }
@@ -81,7 +85,7 @@ void player::MoveInAir(float prev_t)
 {
     static glm::vec2 v_y(0,0);
     glm::vec2 nv, npos;
-    static float jump_start = -1;
+    static float jump_start;
 
     if (moving == LEFT)
         go_x -= (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_IN_AIR,
@@ -91,40 +95,47 @@ void player::MoveInAir(float prev_t)
         go_x = go_x > 1 ? 1 : go_x;
 
     if (jump_state == JUMP)
+        jump_start = time.GetTime(),
         jump_state = MOVE_UP;
     if (jump_state == MOVE_UP) {
-        if (jump_start < 0)
-            jump_start = time.GetTime();
         v_y = glm::vec2((g.x * v.x + g.y * v.y) * g.x, (g.x * v.x + g.y * v.y) * g.y);
         if (jump_start + MAX_MOVE_UP_TIME < time.GetTime())
             jump_state = FALL;
     }
     if (jump_state == FALL)
-        jump_start = -1,
         v_y += g * (time.GetTime() - prev_t) * MAX_PLAYER_GRAVITY;
 
     v = glm::vec2(-MAX_PLAYER_MOVE_SPEED_IN_AIR * g.y * go_x, MAX_PLAYER_MOVE_SPEED_IN_AIR * g.x * go_x) + v_y;
     npos = pos + v * (time.GetTime() - prev_t);
 
     glm::vec2 d = glm::normalize(npos - pos);
-    while (pos.y >= 0 && pos.y < lvl->map.GetHeight() && pos.x >= 0 && pos.x < lvl->map.GetWidth() && glm::dot(d, (npos - pos)) > 0)
+    while (pos.y >= 0 && pos.y < MapHeight && pos.x >= 0 && pos.x < MapWidth && glm::dot(d, (npos - pos)) > 0)
     {
-        if (lvl->map.im.GetPixel(pos.x, pos.y).a > 0)
+        if (cur_surf->im.GetPixel(pos.x, pos.y).a > 0) {
+            cur_surf = cur_surf;
             break;
+        }
+        for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
+            if ((*i)->IsOnMap(pos))
+                if ((*i)->im.GetPixel(pos.x - (*i)->pos.x, pos.y - (*i)->pos.y).a > 0)
+                {
+                    cur_surf = *i;
+                    break;
+                }
         pos += d;
     }
 }
 
 player::player(level *nlvl): skin(), lvl(nlvl), pos(400,300), g(0, 1), is_on_ground(false),
-                             go_x(0), moving(STOP), jump_state(FALL)
+                             go_x(0), moving(STOP), jump_state(FALL), cur_surf(*nlvl->maps.begin())
 {
     image im("player.png");
     skin.BindImg(im);
     float vert[] = {
-        0 - (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0                                                 , 0, 0, 1,
-        0 - (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0 + (float)skin.GetHeight() / lvl->map.GetHeight(), 0, 0, 0,
-        0 + (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0 + (float)skin.GetHeight() / lvl->map.GetHeight(), 0, 1, 0,
-        0 + (float)skin.GetWidth() / lvl->map.GetWidth() / 2, 0                                                 , 0, 1, 1
+        0 - (float)skin.GetWidth() / 2, 0                          , 0, 0, 1,
+        0 - (float)skin.GetWidth() / 2, 0 + (float)skin.GetHeight(), 0, 0, 0,
+        0 + (float)skin.GetWidth() / 2, 0 + (float)skin.GetHeight(), 0, 1, 0,
+        0 + (float)skin.GetWidth() / 2, 0                          , 0, 1, 1
     };
     GLuint ind[] = {
         0, 1, 3,
@@ -132,11 +143,6 @@ player::player(level *nlvl): skin(), lvl(nlvl), pos(400,300), g(0, 1), is_on_gro
     };
 
     mesh = new mesh_2d(GL_STATIC_DRAW, skin, vert, sizeof(vert), ind, sizeof(ind));
-}
-
-glm::vec2 player::GetTexCoord(void) const
-{
-    return glm::vec2(pos.x / lvl->map.GetWidth() * 2 - 1, (pos.y / lvl->map.GetHeight() * 2 - 1) / lvl->map.GetWidth() * lvl->map.GetHeight());
 }
 
 void player::Response(void)
@@ -147,7 +153,14 @@ void player::Response(void)
         return;
     glm::vec2 prev_pos = pos;
 
-    is_on_ground = (lvl->map.im.GetPixel(pos.x, pos.y).a > 0);
+    is_on_ground = false;
+    for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
+        if ((*i)->IsOnMap(pos))
+            if ((*i)->im.GetPixel(pos.x - (*i)->pos.x, pos.y - (*i)->pos.y).a > 0)
+            {
+                is_on_ground = true;
+                cur_surf = *i;
+            }
     if (is_on_ground)
         MoveOnGround(prev_t);
     else
@@ -158,7 +171,7 @@ void player::Response(void)
 
 void player::Draw(void) const
 {
-    glm::mat4 model = glm::rotate(glm::translate(IDENTITY_MATRIX, glm::vec3(GetTexCoord().x, GetTexCoord().y, 0)), atan2(g.x, -g.y), glm::vec3(0, 0, 1));
+    glm::mat4 model = glm::rotate(glm::translate(IDENTITY_MATRIX, glm::vec3(pos.x, pos.y, 0)), atan2(g.x, -g.y), glm::vec3(0, 0, 1));
 
     mesh->Draw(model, IDENTITY_MATRIX, lvl->fbo_projection);
 }

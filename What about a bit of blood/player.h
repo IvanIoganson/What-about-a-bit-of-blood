@@ -17,6 +17,7 @@ class player
 private:
     texture skin;
     mesh_2d *mesh;
+    map *cur_surf;
     void MoveOnGround(float prev_t);
     void MoveInAir(float prev_t);
 public:
@@ -32,7 +33,6 @@ public:
     timer time;
     level *lvl;
     player(level *nlvl);
-    glm::vec2 GetTexCoord(void) const;
     void Response(void);
     void Draw(void) const;
 

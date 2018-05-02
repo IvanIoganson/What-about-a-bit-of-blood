@@ -10,7 +10,7 @@ private:
     timer time;
     unsigned int VAO, VBO, EBO;
     shader shaderProgram;
-    GLint vertexTimeLocation, viewLoc, projectionLoc, modelLoc;
+    int vertexTimeLocation, viewLoc, projectionLoc, modelLoc;
     float ratio;
 public:
     plane(float ratio);
