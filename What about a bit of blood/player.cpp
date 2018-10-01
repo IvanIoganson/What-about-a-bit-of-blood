@@ -16,113 +16,151 @@
 
 player *A;
 
-void player::MoveOnGround(float prev_t)
+void player::MoveOnGround(float prev_t, float cur_t)
 {
-    glm::vec2 n = cur_surf->GetNormal(pos);
-    g = -n;
-    
+	static glm::vec2 pos_on_cur_map = cur_surf->ToMapBasis(pos), last_pos;
+	static float len = 0;
+    last_pos = pos;
+    if (jump_state == FALL || jump_state == MOVE_UP)
+    {
+        jump_state = ON_GROUND;
+		pos_on_cur_map = cur_surf->ToMapBasis(pos);
+    }
+	glm::vec2 start = pos_on_cur_map;
+    glm::vec2 n;
+
     if (moving == LEFT)
-        go_x -= (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_ON_GROUND,
+        go_x -= (cur_t - prev_t) * PLAYER_NORMAL_ACCELERATION_X_ON_GROUND,
         go_x = go_x < -1 ? -1 : go_x;
     else if (moving == RIGHT)
-        go_x += (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_ON_GROUND,
+        go_x += (cur_t - prev_t) * PLAYER_NORMAL_ACCELERATION_X_ON_GROUND,
         go_x = go_x > 1 ? 1 : go_x;
     else
         go_x = 0;
 
     if (moving != STOP)
     {
-        glm::vec2 start = pos;
-        int x = pos.x, y = pos.y;
-        glm::vec2 d;
-        float len = MAX_PLAYER_MOVE_SPEED_ON_GROUND * (time.GetTime() - prev_t);
-        if (len < 1)
-            len = 1;
-        for (int i = 0; i < len; i++)
+        int x = pos_on_cur_map.x, y = pos_on_cur_map.y;
+		glm::vec2 d;
+		len += MAX_PLAYER_MOVE_SPEED_ON_GROUND * (cur_t - prev_t) * go_x;
+        while (int(len) != 0)
         {
-            d = glm::vec2(n.y * go_x, -n.x * go_x);
-            pos += d;
-            if ((int)pos.x != x || (int)pos.y != y)
-            {
-                /*for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
-                    if ((*i)->IsOnMap(pos))
-                        if ((*i)->im.GetPixel(pos.x - (*i)->pos.x, pos.y - (*i)->pos.y).a > 0)
-                            cur_surf = *i;*/
-                if (cur_surf->im.GetPixel(pos.x, pos.y).a == 0)
-                {
-                    pos = cur_surf->GetCollision(pos, g);
-                }
-                else if (cur_surf->im.GetNumOfNotCromaPoints(pos) > 8)
-                {
-                    pos = cur_surf->GetFreePlace(pos, n);
-                }
-                x = pos.x, y = pos.y;
-                n = cur_surf->GetNormal(pos);
-                g = -n;
-            }
+            float len_step;
+			pos_on_cur_map = cur_surf->Step(pos_on_cur_map, go_x, &len_step);
+            if (len_step == 0)
+                break;
+			len -= glm::sign(go_x) * len_step;
+
+            map *m = cur_surf;
+            glm::vec2 p = cur_surf->ToDefaultBasis(pos_on_cur_map);
+            for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
+                if (m != *i && (*i)->IsOnMap(p))
+                    if (!(*i)->IsAlpha(p))
+                    {
+                        cur_surf = *i;
+                        pos_on_cur_map = cur_surf->ToMapBasis(p);
+                        start = pos_on_cur_map;
+                        n = cur_surf->GetNormal(pos_on_cur_map);
+                        int j = 1;
+                        do {
+                            n = cur_surf->GetNormal(pos_on_cur_map, j++);
+                        } while (n.x * n.x + n.y * n.y < 0.1);
+                        pos_on_cur_map = cur_surf->GetFreePlace(pos_on_cur_map, n);
+                        break;
+                    }
         }
-        v = (pos - start) / (time.GetTime() - prev_t);
     }
-    else
-        v = glm::vec2(0,0);
-    if (jump_state == FALL || jump_state == MOVE_UP)
-    {
-        jump_state = ON_GROUND;
-        is_on_ground = true;
-    }
+	pos = cur_surf->ToDefaultBasis(pos_on_cur_map);
+    map *m = cur_surf;
+    for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
+        if (m != *i && (*i)->IsOnMap(pos))
+            if (!(*i)->IsAlpha(pos))
+            {
+                cur_surf = *i;
+                pos_on_cur_map = cur_surf->ToMapBasis(pos);
+                n = cur_surf->GetNormal(pos_on_cur_map);
+                int j = 1;
+                do {
+                    n = cur_surf->GetNormal(pos_on_cur_map, j++);
+                } while (n.x * n.x + n.y * n.y < 0.1);
+                pos_on_cur_map = cur_surf->GetFreePlace(pos_on_cur_map, n);
+                pos = cur_surf->ToDefaultBasis(pos_on_cur_map);
+                if (!m->IsAlpha(pos))
+                {
+                    cur_surf = m;
+                    pos_on_cur_map = cur_surf->ToMapBasis(pos);
+                    n = cur_surf->GetNormal(pos_on_cur_map);
+                    int j = 1;
+                    do {
+                        n = cur_surf->GetNormal(pos_on_cur_map, j++);
+                    } while (n.x * n.x + n.y * n.y < 0.1);
+                    pos_on_cur_map = cur_surf->GetFreePlace(pos_on_cur_map, n);
+                    pos = cur_surf->ToDefaultBasis(pos_on_cur_map);
+                }
+                start = pos_on_cur_map;
+                break;
+            }
+    v = (pos - last_pos) / (cur_t - prev_t);
+    n = cur_surf->GetNormal(pos_on_cur_map, 5);
+    g = -n;
     if (jump_state == JUMP)
     {
-        n = cur_surf->GetNormal(pos);
-        v += n * PLAYER_JUMP_SPEED;
-        g = -n;
+		v = v + n * PLAYER_JUMP_SPEED - (pos_on_cur_map - start) / (cur_t - prev_t),
         is_on_ground = false;
-        while (cur_surf->im.GetPixel(pos.x, pos.y).a > 0)
-            pos += n;
+        while (!cur_surf->IsAlpha(pos))
+			pos += n;
     }
 }
 
-void player::MoveInAir(float prev_t)
+void player::MoveInAir(float prev_t, float cur_t)
 {
-    static glm::vec2 v_y(0,0);
+    static glm::vec2 v_start(0,0);
     glm::vec2 nv, npos;
-    static float jump_start;
+    static float jump_start_time;
 
     if (moving == LEFT)
-        go_x -= (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_IN_AIR,
+        go_x -= (cur_t - prev_t) * PLAYER_NORMAL_ACCELERATION_X_IN_AIR,
         go_x = go_x < -1 ? -1 : go_x;
     else if (moving == RIGHT)
-        go_x += (time.GetTime() - prev_t) * PLAYER_NORMAL_ACCELERATION_X_IN_AIR,
+        go_x += (cur_t - prev_t) * PLAYER_NORMAL_ACCELERATION_X_IN_AIR,
         go_x = go_x > 1 ? 1 : go_x;
 
-    if (jump_state == JUMP)
-        jump_start = time.GetTime(),
+    if (jump_state == JUMP)		
+        v_start = v,
+        jump_start_time = cur_t,
         jump_state = MOVE_UP;
-    if (jump_state == MOVE_UP) {
-        v_y = glm::vec2((g.x * v.x + g.y * v.y) * g.x, (g.x * v.x + g.y * v.y) * g.y);
-        if (jump_start + MAX_MOVE_UP_TIME < time.GetTime())
+    if (jump_state == MOVE_UP)
+        if (jump_start_time + MAX_MOVE_UP_TIME < cur_t)
             jump_state = FALL;
-    }
     if (jump_state == FALL)
-        v_y += g * (time.GetTime() - prev_t) * MAX_PLAYER_GRAVITY;
+        v_start += g * (cur_t - prev_t) * MAX_PLAYER_GRAVITY;
 
-    v = glm::vec2(-MAX_PLAYER_MOVE_SPEED_IN_AIR * g.y * go_x, MAX_PLAYER_MOVE_SPEED_IN_AIR * g.x * go_x) + v_y;
-    npos = pos + v * (time.GetTime() - prev_t);
+    v = glm::vec2(-MAX_PLAYER_MOVE_SPEED_IN_AIR * g.y * go_x, MAX_PLAYER_MOVE_SPEED_IN_AIR * g.x * go_x) + v_start;
+    npos = pos + v * (cur_t - prev_t);
 
     glm::vec2 d = glm::normalize(npos - pos);
     while (pos.y >= 0 && pos.y < MapHeight && pos.x >= 0 && pos.x < MapWidth && glm::dot(d, (npos - pos)) > 0)
     {
-        if (cur_surf->im.GetPixel(pos.x, pos.y).a > 0) {
-            cur_surf = cur_surf;
-            break;
-        }
+		pos += d;
         for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
             if ((*i)->IsOnMap(pos))
-                if ((*i)->im.GetPixel(pos.x - (*i)->pos.x, pos.y - (*i)->pos.y).a > 0)
+                if (!(*i)->IsAlpha(pos))
                 {
                     cur_surf = *i;
+                    is_on_ground = true;
+                    glm::vec2 pos_on_cur_map = cur_surf->ToMapBasis(pos);
+                    glm::vec2 n = cur_surf->GetNormal(pos_on_cur_map);
+                    int j = 1;
+                    do {
+                        n = cur_surf->GetNormal(pos_on_cur_map, j++);
+                    } while (n.x * n.x + n.y * n.y < 0.1);
+                    pos_on_cur_map = cur_surf->GetFreePlace(pos_on_cur_map, n);
+                    pos = cur_surf->ToDefaultBasis(pos_on_cur_map);
+                    v_start = glm::vec2(0, 0);
                     break;
                 }
-        pos += d;
+        if (is_on_ground)
+            break;
     }
 }
 
@@ -151,22 +189,25 @@ void player::Response(void)
 
     if (lvl == NULL)
         return;
-    glm::vec2 prev_pos = pos;
 
-    is_on_ground = false;
+    /*is_on_ground = false;
+	map *m = cur_surf;
     for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
         if ((*i)->IsOnMap(pos))
-            if ((*i)->im.GetPixel(pos.x - (*i)->pos.x, pos.y - (*i)->pos.y).a > 0)
+            if (!(*i)->IsAlpha(pos))
             {
                 is_on_ground = true;
-                cur_surf = *i;
-            }
-    if (is_on_ground)
-        MoveOnGround(prev_t);
-    else
-        MoveInAir(prev_t);
+				if (m != *i)
+					cur_surf = *i;
+            }*/
 
-    prev_t = time.GetTime();
+	double cur_t = time.GetTime();
+    if (is_on_ground)
+        MoveOnGround(prev_t, cur_t);
+    else
+        MoveInAir(prev_t, cur_t);
+
+    prev_t = cur_t;
 }
 
 void player::Draw(void) const

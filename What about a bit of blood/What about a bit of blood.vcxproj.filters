@@ -96,15 +96,4 @@
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <Image Include="player.png">
-      <Filter>Файлы ресурсов</Filter>
-    </Image>
-    <Image Include="map1.png">
-      <Filter>Файлы ресурсов</Filter>
-    </Image>
-    <Image Include="rect.jpg">
-      <Filter>Файлы ресурсов</Filter>
-    </Image>
-  </ItemGroup>
 </Project>

@@ -18,8 +18,8 @@ private:
     texture skin;
     mesh_2d *mesh;
     map *cur_surf;
-    void MoveOnGround(float prev_t);
-    void MoveInAir(float prev_t);
+    void MoveOnGround(float prev_t, float cur_t);
+    void MoveInAir(float prev_t, float cur_t);
 public:
     bool is_on_ground;
     double go_x;

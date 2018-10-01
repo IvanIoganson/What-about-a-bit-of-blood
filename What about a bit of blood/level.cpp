@@ -70,8 +70,8 @@ level::level(string map_name): time(), fbo_texture(false), view(1.f)
     const float screen_ratio = (float)WidthScreen / HeightScreen;
     projection = glm::perspective(glm::radians(45.f), screen_ratio, 0.1f, 100.0f);
     const double plane_ratio = (float)MapWidth / MapHeight;
-    fbo_projection = glm::ortho(0.f, (float)MapWidth, 0.f, (float)MapHeight, -1.f, 1.f);//glm::ortho(-plane_ratio, plane_ratio, -1., 1., -1., 1.);
-    maps.push_back(new map("rect.png", glm::vec2(600, 400)));
+    fbo_projection = glm::ortho(0.f, (float)MapWidth, 0.f, (float)MapHeight, -1.f, 1.f);
+    maps.push_back(new map("rect.png", [](float t) {return glm::translate(IDENTITY_MATRIX, glm::vec3(600 + 100*(sin(t*3)-1), 400, 0)); }));
 }
 
 level::~level()
