@@ -21,6 +21,7 @@ private:
     void MoveOnGround(float prev_t, float cur_t);
     void MoveInAir(float prev_t, float cur_t);
 public:
+    timer time;
     bool is_on_ground;
     double go_x;
     enum {
@@ -29,12 +30,11 @@ public:
     enum {
         STOP, LEFT, RIGHT
     } moving;
-    glm::vec2 g, v, pos;
-    timer time;
+    glm::vec2 g, v, pos, pos_on_cur_map;
     level *lvl;
     player(level *nlvl);
     void Response(void);
-    void Draw(void) const;
+    void Draw(glm::mat4 &view) const;
 
     friend class level;
 };

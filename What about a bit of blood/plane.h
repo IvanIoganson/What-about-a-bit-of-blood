@@ -7,12 +7,12 @@
 
 class plane {
 private:
-    timer time;
     unsigned int VAO, VBO, EBO;
     shader shaderProgram;
     int vertexTimeLocation, viewLoc, projectionLoc, modelLoc;
-    float ratio;
 public:
+    timer time;
+    float ratio;
     plane(float ratio);
     void plane::Draw(const texture &tex, const glm::mat4 &projection, const glm::mat4 &view, const glm::mat4 &model) const;
     unsigned int GetShaderID(void) const { return shaderProgram.program; }

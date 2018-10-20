@@ -5,9 +5,10 @@ class timer
 private:
     const float start;
     float speed;
-    mutable float time, prevtime;
+    float time, prevtime;
 public:
-    timer(void);
-    float GetTime( void ) const;
+    timer(int cur_t = 0, float init_speed = 1.f);
+    void SynchronizeTimer(int cur_frame_t);
+    float GetTime(void) const;
     void SetSpeed(float new_speed);
 };

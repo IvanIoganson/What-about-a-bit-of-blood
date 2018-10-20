@@ -26,7 +26,7 @@ public:
     glm::vec2 GetNormal(const glm::vec2 &map_point, int D = 1) const;
     int GetWidth(void) const;
     int GetHeight(void) const;
-    virtual void Draw(void) const;
+    virtual void Draw(glm::mat4 &view) const;
 	bool IsOnMap(glm::vec2 pos) const;
 	glm::vec2 ToMapBasis(glm::vec2 pos, float w = 1.f) const;
 	glm::vec2 ToDefaultBasis(glm::vec2 map_pos, float w = 1.f) const;

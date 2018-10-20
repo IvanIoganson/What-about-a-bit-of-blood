@@ -66,12 +66,15 @@ level::level(string map_name): time(), fbo_texture(false), view(1.f)
     glRenderbufferStorageMultisample(GL_RENDERBUFFER, msaa, GL_RGB8, width, height);*/
     maps.push_back(new map("map1.png"));
     MapWidth = (*maps.begin())->GetWidth(), MapHeight = (*maps.begin())->GetHeight();
-    p = new plane((float)MapWidth / MapHeight);
     const float screen_ratio = (float)WidthScreen / HeightScreen;
+    p = new plane(screen_ratio);
     projection = glm::perspective(glm::radians(45.f), screen_ratio, 0.1f, 100.0f);
     const double plane_ratio = (float)MapWidth / MapHeight;
     fbo_projection = glm::ortho(0.f, (float)MapWidth, 0.f, (float)MapHeight, -1.f, 1.f);
-    maps.push_back(new map("rect.png", [](float t) {return glm::translate(IDENTITY_MATRIX, glm::vec3(600 + 100*(sin(t*3)-1), 400, 0)); }));
+    maps.push_back(new map("rect.png", [](float t) {return glm::translate(glm::rotate(glm::translate(IDENTITY_MATRIX,
+        glm::vec3(600 + 100*(sin(t*10)-1), 400, 0)),
+        t, glm::vec3(0, 0, 1)),
+        glm::vec3(-100, -50, 0)); }));
 }
 
 level::~level()
@@ -85,11 +88,19 @@ level::~level()
 
 void level::DrawFBO(void) const
 {
-    static timer timerFPS;
-    static double prev_t = timerFPS.GetTime();
     const float screen_ratio = (float)WidthScreen / HeightScreen;
     const float plane_ratio = (float)MapWidth / MapHeight;
 
+    static float prev_t = lvl->time.GetTime();
+    static glm::vec2 down = A->g;
+    glm::vec2 t = A->g - down;
+    down += t * (lvl->time.GetTime() - prev_t);
+
+    glm::mat4 view = IDENTITY_MATRIX;
+    view = glm::translate(view, glm::vec3(MapWidth / 2,MapHeight / 2, 0.f));
+    view = glm::scale(view, glm::vec3((float)MapWidth / WidthScreen, (float)MapHeight / HeightScreen, 1));
+    view = glm::rotate(view, -atan2(down.x, -down.y), glm::vec3(0.0f, 0.0f, 1.0f));
+    view = glm::translate(view, glm::vec3(-A->pos.x, -A->pos.y, 0.f));
     glUseProgram(0);
     glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, fbo);
     glMatrixMode(GL_MODELVIEW);
@@ -100,8 +111,8 @@ void level::DrawFBO(void) const
     glEnable(GL_TEXTURE_2D);
 
     for (auto i = maps.begin(); i != maps.end(); i++)
-        (*i)->Draw();
-    A->Draw();
+        (*i)->Draw(view);
+    A->Draw(view);
 
     /*glColor3d(1, 1, 0);
     glBegin(GL_TRIANGLES);
@@ -120,19 +131,14 @@ void level::DrawFBO(void) const
     PrintText("%lf", 1 / (timerFPS.GetTime() - prev_t));
     prev_t = timerFPS.GetTime();
     glColor3f(0, 0, 0);*/
-
+    prev_t = lvl->time.GetTime();
     glFlush();
     glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, 0);
 }
 
 void level::ResponseCamera(void)
 {
-    static glm::vec2 down = A->g;
-    glm::vec2 t = A->g - down;
-    down += t * 0.01f;
-
-    view = glm::rotate(IDENTITY_MATRIX, -atan2(down.x, -down.y), glm::vec3(0.0f, 0.0f, 1.0f));
-    view = glm::translate(view, glm::vec3((-A->pos.x / MapWidth * 2 + 1) * MapWidth / MapHeight, -A->pos.y / MapHeight * 2 + 1, -2.f));
+    view = glm::translate(IDENTITY_MATRIX, glm::vec3(0.f, 0.f, -2.f));
 }
 
 void level::Draw(void)

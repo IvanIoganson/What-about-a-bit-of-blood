@@ -13,16 +13,16 @@ class level
 {
 private:
     list<map *> maps;
-    timer time;
     unsigned int fbo;
     texture fbo_texture;
     glm::mat4 view;
     glm::mat4 projection;
-    plane *p;
 
     void DrawFBO(void) const;
     void ResponseCamera(void);
 public:
+    plane *p;
+    timer time;
     glm::mat4 fbo_projection;
 
     level(string map_name);

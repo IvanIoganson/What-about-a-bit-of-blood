@@ -18,14 +18,27 @@ player *A;
 
 void player::MoveOnGround(float prev_t, float cur_t)
 {
-	static glm::vec2 pos_on_cur_map = cur_surf->ToMapBasis(pos), last_pos;
+	static glm::vec2 last_pos;
 	static float len = 0;
-    last_pos = pos;
     if (jump_state == FALL || jump_state == MOVE_UP)
     {
         jump_state = ON_GROUND;
-		pos_on_cur_map = cur_surf->ToMapBasis(pos);
+        if (cur_surf->im.GetPixel(pos_on_cur_map.x, pos_on_cur_map.y).a > 0)
+        {
+            glm::vec2 n;
+            int j = 1;
+            do {
+                n = cur_surf->GetNormal(pos_on_cur_map, j++);
+            } while (n.x * n.x + n.y * n.y < 0.1);
+            pos_on_cur_map = cur_surf->GetFreePlace(pos_on_cur_map, n);
+        }
+        else
+        {
+            pos_on_cur_map = cur_surf->GetCollision(pos_on_cur_map, v);
+        }
+        pos = cur_surf->ToDefaultBasis(pos_on_cur_map);
     }
+    last_pos = pos;
 	glm::vec2 start = pos_on_cur_map;
     glm::vec2 n;
 
@@ -102,13 +115,15 @@ void player::MoveOnGround(float prev_t, float cur_t)
             }
     v = (pos - last_pos) / (cur_t - prev_t);
     n = cur_surf->GetNormal(pos_on_cur_map, 5);
-    g = -n;
+    g = cur_surf->ToDefaultBasis(-n, 0);
     if (jump_state == JUMP)
     {
-		v = v + n * PLAYER_JUMP_SPEED - (pos_on_cur_map - start) / (cur_t - prev_t),
+		v = v - g * PLAYER_JUMP_SPEED - (pos_on_cur_map - start) / (cur_t - prev_t),
         is_on_ground = false;
         while (!cur_surf->IsAlpha(pos))
-			pos += n;
+			pos -= g;
+        if (glm::dot(g, v) < 0)
+            MoveInAir(prev_t, cur_t);
     }
 }
 
@@ -139,7 +154,7 @@ void player::MoveInAir(float prev_t, float cur_t)
     npos = pos + v * (cur_t - prev_t);
 
     glm::vec2 d = glm::normalize(npos - pos);
-    while (pos.y >= 0 && pos.y < MapHeight && pos.x >= 0 && pos.x < MapWidth && glm::dot(d, (npos - pos)) > 0)
+    while (glm::dot(d, (npos - pos)) > 0)
     {
 		pos += d;
         for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
@@ -148,7 +163,7 @@ void player::MoveInAir(float prev_t, float cur_t)
                 {
                     cur_surf = *i;
                     is_on_ground = true;
-                    glm::vec2 pos_on_cur_map = cur_surf->ToMapBasis(pos);
+                    pos_on_cur_map = cur_surf->ToMapBasis(pos);
                     glm::vec2 n = cur_surf->GetNormal(pos_on_cur_map);
                     int j = 1;
                     do {
@@ -164,7 +179,7 @@ void player::MoveInAir(float prev_t, float cur_t)
     }
 }
 
-player::player(level *nlvl): skin(), lvl(nlvl), pos(400,300), g(0, 1), is_on_ground(false),
+player::player(level *nlvl): skin(), lvl(nlvl), pos(4000,3000), g(0, 1), is_on_ground(false),
                              go_x(0), moving(STOP), jump_state(FALL), cur_surf(*nlvl->maps.begin())
 {
     image im("player.png");
@@ -181,6 +196,7 @@ player::player(level *nlvl): skin(), lvl(nlvl), pos(400,300), g(0, 1), is_on_gro
     };
 
     mesh = new mesh_2d(GL_STATIC_DRAW, skin, vert, sizeof(vert), ind, sizeof(ind));
+    pos_on_cur_map = cur_surf->ToMapBasis(pos);
 }
 
 void player::Response(void)
@@ -189,17 +205,6 @@ void player::Response(void)
 
     if (lvl == NULL)
         return;
-
-    /*is_on_ground = false;
-	map *m = cur_surf;
-    for (auto i = lvl->maps.begin(); i != lvl->maps.end(); i++)
-        if ((*i)->IsOnMap(pos))
-            if (!(*i)->IsAlpha(pos))
-            {
-                is_on_ground = true;
-				if (m != *i)
-					cur_surf = *i;
-            }*/
 
 	double cur_t = time.GetTime();
     if (is_on_ground)
@@ -210,9 +215,9 @@ void player::Response(void)
     prev_t = cur_t;
 }
 
-void player::Draw(void) const
+void player::Draw(glm::mat4 &view) const
 {
     glm::mat4 model = glm::rotate(glm::translate(IDENTITY_MATRIX, glm::vec3(pos.x, pos.y, 0)), atan2(g.x, -g.y), glm::vec3(0, 0, 1));
 
-    mesh->Draw(model, IDENTITY_MATRIX, lvl->fbo_projection);
+    mesh->Draw(model, view, lvl->fbo_projection);
 }

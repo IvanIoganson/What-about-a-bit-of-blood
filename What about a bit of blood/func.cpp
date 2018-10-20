@@ -1,4 +1,6 @@
 ﻿#include <iostream>
+#include <ctime>
+
 #include "main.h"
 #include "image.h"
 #include "player.h"
@@ -73,6 +75,15 @@ void Init(void)
     A = new player(lvl);
 }
 
+void SynchronizeTimers(void)
+{
+    clock_t ttt = clock();
+    lvl->time.SynchronizeTimer(ttt);
+    A->time.SynchronizeTimer(ttt);
+    WorldTime.SynchronizeTimer(ttt);
+    lvl->p->time.SynchronizeTimer(ttt);
+}
+
 void Display(void)
 {
     //system("cls");
@@ -82,11 +93,12 @@ void Display(void)
 
     static timer timerFPS;
     static double prev_t = timerFPS.GetTime();
-
+    timerFPS.SynchronizeTimer(clock());
+    SynchronizeTimers();
     glLoadIdentity();
 
-    lvl->Draw();
     A->Response();
+    lvl->Draw();
 
     glUseProgram(0);
 

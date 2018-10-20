@@ -119,10 +119,10 @@ int map::GetHeight(void) const
     return im.GetHeight();
 }
 
-void map::Draw(void) const
+void map::Draw(glm::mat4 &view) const
 {
     glm::mat4 model = moving(WorldTime.GetTime());
-    mesh->Draw(model, IDENTITY_MATRIX, lvl->fbo_projection);
+    mesh->Draw(model, view, lvl->fbo_projection);
 }
 
 bool map::IsOnMap(glm::vec2 pos) const

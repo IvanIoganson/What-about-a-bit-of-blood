@@ -1,23 +1,21 @@
-#include <ctime>
 #include "timer.h"
 
-
-timer::timer(void) : start(clock()), time(0), speed(1), prevtime(start)
+timer::timer(int cur_t, float init_speed) : start(cur_t), time(0), speed(init_speed), prevtime(start)
 {
+}
+
+void timer::SynchronizeTimer(int cur_frame_t)
+{
+    time += (cur_frame_t - prevtime) * speed;
+    prevtime = cur_frame_t;
 }
 
 float timer::GetTime(void) const
 {
-    int ttt = clock();
-    time += (ttt - prevtime) * speed;
-    prevtime = ttt;
-    return time / CLOCKS_PER_SEC;
+    return time / 1000;
 }
 
 void timer::SetSpeed(float new_speed)
 {
-    int ttt = clock();
-    time += (ttt - prevtime) * speed;
-    prevtime = ttt;
     speed = new_speed;
 }

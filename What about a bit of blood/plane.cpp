@@ -17,10 +17,10 @@ plane::plane(float ratio): shaderProgram("Plane/vertex_shader.glsl", "Plane/frag
     modelLoc = glGetUniformLocation(shaderProgram.program, "model");
 
     GLfloat vertices[] = {
-         1.f * ratio,  1.f, 0.0f, 1.0f, 1.0f,
-         1.f * ratio, -1.f, 0.0f, 1.0f, 0.0f,
-        -1.f * ratio, -1.f, 0.0f, 0.0f, 0.0f,
-        -1.f * ratio,  1.f, 0.0f, 0.0f, 1.0f
+         ratio,  1.f, 0.0f, 1.0f, 1.0f,
+         ratio, -1.f, 0.0f, 1.0f, 0.0f,
+        -ratio, -1.f, 0.0f, 0.0f, 0.0f,
+        -ratio,  1.f, 0.0f, 0.0f, 1.0f
     };
     GLuint indices[] = {  
         0, 1, 3,   
